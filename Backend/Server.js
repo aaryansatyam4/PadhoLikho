@@ -673,18 +673,22 @@ app.delete('/unlike', async (req, res) => {
   }
 });
 
-// GET /getLikes/:post_id
-app.get('/getLikes/:post_id', async (req, res) => {
-  const { post_id } = req.params;
-
+app.get('/getLikes/:postId', async (req, res) => {
+  const postId = req.params.postId;
   try {
-      const [likes] = await db.query("SELECT user_id FROM likes WHERE post_id = ?", [post_id]);
-      res.json({ likesCount: likes.length });
-  } catch (error) {
-      console.error("Error fetching likes:", error);
-      res.status(500).json({ error: "Server error" });
+    const [rows] = await db.query(
+      'SELECT user_id FROM likes WHERE post_id = ?',
+      [postId]
+    );
+    const count = rows.length;
+    const users = rows.map(row => row.user_id);
+    res.json({ count, users });
+  } catch (err) {
+    console.error('Failed to fetch likes:', err);
+    res.status(500).json({ error: 'Failed to fetch likes' });
   }
 });
+
 
 
 app.get('/getUserLikes/:user_id', async (req, res) => {

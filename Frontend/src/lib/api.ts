@@ -237,13 +237,14 @@ export const unlikePost = async (postId: string) => {
 
 export const getLikes = async (postId: string) => {
   try {
-    const response = await api.get(`/likes/${postId}`);
+    const response = await api.get(`/getLikes/${postId}`); // <-- correct path
     return response.data;
   } catch (error) {
     console.error('Error fetching likes for the post:', error);
     throw error;
   }
 };
+
 
 // ----------------- Like APIs -----------------
 

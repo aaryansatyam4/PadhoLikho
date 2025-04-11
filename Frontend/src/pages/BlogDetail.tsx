@@ -6,11 +6,11 @@ import { Navbar } from '../components/Navbar';
 import { TextInput } from '../components/ui/TextInput';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
-import { getBlog, getComments, addComment, addBookmark, removeBookmark, getBookmarks } from '../lib/api';
+import { getBlog, getComments, addComment, addBookmark, removeBookmark, getBookmarks,  likePost,unlikePost,getLikes } from '../lib/api';
 import type { Blog, Comment } from '../types';
 import Cookies from 'js-cookie';
 import { jwtDecode } from 'jwt-decode';
-import { Bookmark, BookmarkCheck, Share2 } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Share2, Heart, HeartHandshake } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFacebook, faInstagram, faLinkedin } from '@fortawesome/free-brands-svg-icons';
 import { faClipboard } from '@fortawesome/free-solid-svg-icons';
@@ -27,8 +27,38 @@ export default function BlogDetail() {
   const [editContent, setEditContent] = useState('');
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [showShareOptions, setShowShareOptions] = useState(false);
+  const [likes, setLikes] = useState<number>(0);
+  const [liked, setLiked] = useState(false);
 
   const token = Cookies.get('authToken');
+
+
+  let clickTimeout: NodeJS.Timeout;
+
+const handleLikeClick = async () => {
+  if (!id || !token) return;
+
+  if (clickTimeout) {
+    clearTimeout(clickTimeout);
+    clickTimeout = null!;
+    // Double click -> Unlike
+    if (liked) {
+      await unlikePost(id);
+      setLiked(false);
+      setLikes((prev) => Math.max(prev - 1, 0));
+    }
+  } else {
+    clickTimeout = setTimeout(async () => {
+      if (!liked) {
+        await likePost(id);
+        setLiked(true);
+        setLikes((prev) => prev + 1);
+      }
+      clearTimeout(clickTimeout);
+    }, 250);
+  }
+};
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -62,6 +92,25 @@ export default function BlogDetail() {
     fetchData();
   }, [id, token]);
 
+  useEffect(() => {
+    const fetchLikes = async () => {
+      if (!id) return;
+      try {
+        const data = await getLikes(id); // returns { count: number, users: number[] }
+        setLikes(data.count || 0);
+  
+        if (token) {
+          const decoded: { id: string } = jwtDecode(token);
+          // 🟥 THIS CHECK IS NOW VALID
+          setLiked(data.users?.includes(Number(decoded.id)));
+        }
+      } catch (err) {
+        console.error('Error fetching likes:', err);
+      }
+    };
+    fetchLikes();
+  }, [id, token]);
+  
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !newComment.trim()) return;
@@ -224,6 +273,19 @@ export default function BlogDetail() {
             </div>
 
             <div className="prose max-w-none whitespace-pre-line">{blog.content}</div>
+            {/* Like Button Section */}
+            <div className="mt-6 flex items-center space-x-3">
+  <Button variant="ghost" onClick={handleLikeClick}>
+    {liked ? (
+      <Heart className="h-6 w-6 text-red-600 fill-current transition-transform duration-150 ease-in-out hover:scale-110" />
+    ) : (
+      <Heart className="h-6 w-6 text-gray-500 transition-transform duration-150 ease-in-out hover:scale-110" />
+    )}
+    <span className="ml-2 text-sm text-gray-600">{likes}</span>
+  </Button>
+</div>
+
+
           </div>
         </article>
 
